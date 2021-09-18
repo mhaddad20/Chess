@@ -1,0 +1,591 @@
+require 'ruby2d'
+
+set background: 'white'
+set height: 600
+set width: 800
+
+SQUARE_SIZE=60
+class Game
+
+  def initialize
+    $board_pieces=[[],[],[],[],[],[],[],[]]
+    $square_position =[] # positions of each square on the screen
+    for a in 0..7
+      $board_pieces[0].push('')# black pawn
+      $board_pieces[1].push('bp')
+      $board_pieces[2].push('')
+      $board_pieces[3].push('')
+      $board_pieces[4].push('')
+      $board_pieces[5].push('')
+      $board_pieces[6].push('wp')# white pawn
+      $board_pieces[7].push('')
+    end
+    $board_pieces[7][2]='wb'
+    $board_pieces[7][5]='wb'
+    $board_pieces[7][0]='wr'
+    $board_pieces[7][7]='wr'
+    $board_pieces[0][2]='bb'
+    $board_pieces[0][5]='bb'
+    $board_pieces[0][0]='br'
+    $board_pieces[0][7]='br'
+    $square_chosen=[[],[],[],[],[],[],[],[]]
+    $valid_moves=[[],[],[],[],[],[],[],[]]
+    $board_colors=['#FFE4BE','#AF6700']
+    @add_positions=false
+    @num_clicks=0
+    @current_piece=false
+    @square_position_x=0
+    @square_position_y=0
+  end
+
+  def draw
+    y=50
+    for a in 0..7
+      x=150
+      arr=[]
+      square_chosen=[]
+      valid_moves=[]
+      for b in 0..7
+        if @add_positions==false
+          arr.push([x,y])
+          square_chosen.push(false)
+          valid_moves.push(false)
+        end
+        square_color=Square.new(x:x,y:y,color:$board_colors[(b+a)%2],size:SQUARE_SIZE,opacity:0.9)
+        if $board_pieces[a][b]=='wp'
+          Image.new('wp.png',x:x+10,y:y+10)
+        elsif $board_pieces[a][b]=='bp'
+            Image.new('bp.png',x:x,y:y+5)
+        elsif $board_pieces[a][b]=='wb'
+          Image.new('white_bishop.png',x:x,y:y)
+        elsif $board_pieces[a][b]=='bb'
+          Image.new('black_bishop.png',x:x+5,y:y+5)
+        elsif $board_pieces[a][b]=='wr'
+          Image.new('white_rook.png',x:x+2.5,y:y+7.5)
+        elsif $board_pieces[a][b]=='br'
+          Image.new('black_rook.png',x:x+2.5,y:y)
+        end
+         x+=60
+      end
+      if @add_positions==false
+        $square_position.push(arr)
+        $square_chosen[a]=square_chosen
+        $valid_moves[a]=valid_moves
+      end
+      y+=60
+    end
+    @add_positions=true
+  end
+
+  def first_move_pawn_white?(row)
+    row==6 ? true :false
+  end
+  def first_move_pawn_black?(row)
+    row==1 ? true :false
+  end
+
+  def valid_moves(row,col)
+    if $board_pieces[row][col]=='wp'
+      if first_move_pawn_white?(row)
+        if $board_pieces[row-2][col]==''&&$board_pieces[row-1][col]==''
+          $valid_moves[row-2][col]=true
+          $valid_moves[row-1][col]=true
+        elsif $board_pieces[row-1][col]!=nil && $board_pieces[row-1][col]==''
+          $valid_moves[row-1][col]=true
+      end
+      elsif $board_pieces[row-1][col]!=nil && $board_pieces[row-1][col]==''
+           $valid_moves[row-1][col]=true
+      end
+      if col==7
+        if $board_pieces[row-1][col+1] == 'bp'
+          $valid_moves[row-1][col-1]=true
+        end
+      elsif col==0
+        if $board_pieces[row-1][col+1] == 'bp'
+          $valid_moves[row-1][col+1]=true
+        end
+      elsif $board_pieces[row-1][col+1]=='bp' ||$board_pieces[row-1][col-1]=='bp'
+        if $board_pieces[row-1][col+1]=='bp' &&$board_pieces[row-1][col-1]=='bp'
+          $valid_moves[row-1][col+1]=true
+          $valid_moves[row-1][col-1]=true
+        elsif $board_pieces[row-1][col+1]=='bp'
+          $valid_moves[row-1][col+1]=true
+        elsif $board_pieces[row-1][col-1]=='bp'
+          $valid_moves[row-1][col-1]=true
+        end
+      end
+    elsif $board_pieces[row][col]=='bp'
+      if first_move_pawn_black?(row)
+        if $board_pieces[row+2][col]==''&&$board_pieces[row+1][col]==''
+          $valid_moves[row+2][col]=true
+          $valid_moves[row+1][col]=true
+        elsif $board_pieces[row+1][col]!=nil && $board_pieces[row+1][col]==''
+          $valid_moves[row+1][col]=true
+      end
+      elsif $board_pieces[row+1][col]!=nil && $board_pieces[row+1][col]==''
+        $valid_moves[row+1][col]=true
+      end
+    if col==7
+      if $board_pieces[row+1][col-1] == 'wp'
+        $valid_moves[row+1][col-1]=true
+      end
+    elsif col==0
+      if $board_pieces[row+1][col+1] == 'wp'
+        $valid_moves[row+1][col+1]=true
+      end
+    elsif $board_pieces[row+1][col+1]=='wp' ||$board_pieces[row+1][col-1]=='wp'
+      if $board_pieces[row+1][col+1]=='wp' &&$board_pieces[row+1][col-1]=='wp'
+        $valid_moves[row+1][col+1]=true
+        $valid_moves[row+1][col-1]=true
+      elsif $board_pieces[row+1][col+1]=='wp'
+        $valid_moves[row+1][col+1]=true
+      elsif $board_pieces[row+1][col-1]=='wp'
+        $valid_moves[row+1][col-1]=true
+      end
+    end
+    elsif $board_pieces[row][col]=='bb'#if player selects the black bishop
+      #lists possible bishop squares
+      tl_row =row-1
+      tl_col=col-1
+      if row!=0
+        until tl_col<0||tl_row<0 #all possible top left bishop squares
+          if $board_pieces[tl_row][tl_col]==''
+            $valid_moves[tl_row][tl_col]=true
+          else
+            if white_pieces(tl_row,tl_col)
+              $valid_moves[tl_row][tl_col]=true
+            end
+            break
+          end
+          tl_row-=1
+          tl_col-=1
+        end
+      end
+      tl_row =row+1
+      tl_col=col-1
+      if row!=7
+        until tl_col<0||tl_row>7 #all possible bottom left bishop squares
+          if $board_pieces[tl_row][tl_col]==''
+            $valid_moves[tl_row][tl_col]=true
+          else
+            if white_pieces(tl_row,tl_col)
+              $valid_moves[tl_row][tl_col]=true
+            end
+            break
+          end
+          tl_row+=1
+          tl_col-=1
+        end
+      end
+      tl_row =row-1
+      tl_col=col+1
+      if row!=0
+        until tl_col>7||tl_row<0  # all possible top right bishop squares
+          if $board_pieces[tl_row][tl_col]==''
+            $valid_moves[tl_row][tl_col]=true
+          else
+            if white_pieces(tl_row,tl_col)
+              $valid_moves[tl_row][tl_col]=true
+            end
+            break
+          end
+          tl_row-=1
+          tl_col+=1
+        end
+      end
+      tl_row =row+1
+      tl_col=col+1
+      if row!=7
+        until tl_row>7||tl_col>7 # all possible bottom right bishop squares
+          if $board_pieces[tl_row][tl_col]==''
+            $valid_moves[tl_row][tl_col]=true
+          else
+            if white_pieces(tl_row,tl_col)
+              $valid_moves[tl_row][tl_col]=true
+            end
+            break
+          end
+          tl_row+=1
+          tl_col+=1
+        end
+      end
+    elsif $board_pieces[row][col]=='wb'#if player selects the white bishop
+      #lists possible bishop squares
+      tl_row =row-1
+      tl_col=col-1
+      if row!=0
+        until tl_col<0||tl_row<0 #all possible top left bishop squares
+          if $board_pieces[tl_row][tl_col]==''
+            $valid_moves[tl_row][tl_col]=true
+          else
+            if black_pieces(tl_row,tl_col)
+              $valid_moves[tl_row][tl_col]=true
+            end
+            break
+          end
+          tl_row-=1
+          tl_col-=1
+        end
+      end
+      tl_row =row+1
+      tl_col=col-1
+      if row!=7
+        until tl_col<0||tl_row>7 #all possible bottom left bishop squares
+          if $board_pieces[tl_row][tl_col]==''
+            $valid_moves[tl_row][tl_col]=true
+          else
+            if black_pieces(tl_row,tl_col)
+              $valid_moves[tl_row][tl_col]=true
+            end
+            break
+          end
+          tl_row+=1
+          tl_col-=1
+        end
+      end
+      tl_row =row-1
+      tl_col=col+1
+      if row!=0
+        until tl_col>7||tl_row<0  # all possible top right bishop squares
+          if $board_pieces[tl_row][tl_col]==''
+            $valid_moves[tl_row][tl_col]=true
+          else
+            if black_pieces(tl_row,tl_col)
+              $valid_moves[tl_row][tl_col]=true
+            end
+            break
+          end
+          tl_row-=1
+          tl_col+=1
+        end
+      end
+      tl_row =row+1
+      tl_col=col+1
+      if row!=7
+        until tl_row>7||tl_col>7 # all possible bottom right bishop squares
+          if $board_pieces[tl_row][tl_col]==''
+            $valid_moves[tl_row][tl_col]=true
+          else
+            if black_pieces(tl_row,tl_col)
+              $valid_moves[tl_row][tl_col]=true
+            end
+            break
+          end
+          tl_row+=1
+          tl_col+=1
+        end
+      end
+    elsif $board_pieces[row][col]=='wr' # valid moves for the white rook
+      curr_row=row-1
+      curr_col=col
+      if row!=0
+        until curr_row<0 # let the rook advance forward
+          if $board_pieces[curr_row][curr_col]==''
+            $valid_moves[curr_row][curr_col]=true
+          else
+            if black_pieces(curr_row,curr_col)
+              $valid_moves[curr_row][curr_col]=true
+            end
+            break
+          end
+          curr_row-=1
+        end
+      end
+      curr_row=row
+      curr_col=col+1
+      if col!=7
+        until curr_col>7 # let the rook advance to the right
+          if $board_pieces[curr_row][curr_col]==''
+            $valid_moves[curr_row][curr_col]=true
+          else
+            if black_pieces(curr_row,curr_col)
+              $valid_moves[curr_row][curr_col]=true
+            end
+            break
+          end
+          curr_col+=1
+        end
+        end
+        curr_row=row+1
+        curr_col=col
+        if row!=7
+          until curr_row>7 # let the rook move back
+            if $board_pieces[curr_row][curr_col]==''
+              $valid_moves[curr_row][curr_col]=true
+            else
+              if black_pieces(curr_row,curr_col)
+                $valid_moves[curr_row][curr_col]=true
+              end
+              break
+            end
+            curr_row+=1
+          end
+        end
+      curr_row=row
+      curr_col=col-1
+      if col!=0
+        until curr_col<0 # let the rook move back
+          if $board_pieces[curr_row][curr_col]==''
+            $valid_moves[curr_row][curr_col]=true
+          else
+            if black_pieces(curr_row,curr_col)
+              $valid_moves[curr_row][curr_col]=true
+            end
+            break
+          end
+          curr_col-=1
+        end
+      end
+    elsif $board_pieces[row][col]=='wr' # valid moves for the white rook
+      curr_row=row-1
+      curr_col=col
+      if row!=0
+        until curr_row<0 # let the rook advance forward
+          if $board_pieces[curr_row][curr_col]==''
+            $valid_moves[curr_row][curr_col]=true
+          else
+            if black_pieces(curr_row,curr_col)
+              $valid_moves[curr_row][curr_col]=true
+            end
+            break
+          end
+          curr_row-=1
+        end
+      end
+      curr_row=row
+      curr_col=col+1
+      if col!=7
+        until curr_col>7 # let the rook advance to the right
+          if $board_pieces[curr_row][curr_col]==''
+            $valid_moves[curr_row][curr_col]=true
+          else
+            if black_pieces(curr_row,curr_col)
+              $valid_moves[curr_row][curr_col]=true
+            end
+            break
+          end
+          curr_col+=1
+        end
+      end
+      curr_row=row+1
+      curr_col=col
+      if row!=7
+        until curr_row>7 # let the rook move back
+          if $board_pieces[curr_row][curr_col]==''
+            $valid_moves[curr_row][curr_col]=true
+          else
+            if black_pieces(curr_row,curr_col)
+              $valid_moves[curr_row][curr_col]=true
+            end
+            break
+          end
+          curr_row+=1
+        end
+      end
+      curr_row=row
+      curr_col=col-1
+      if col!=0
+        until curr_col<0 # let the rook move back
+          if $board_pieces[curr_row][curr_col]==''
+            $valid_moves[curr_row][curr_col]=true
+          else
+            if black_pieces(curr_row,curr_col)
+              $valid_moves[curr_row][curr_col]=true
+            end
+            break
+          end
+          curr_col-=1
+        end
+      end
+    end
+  end
+  
+  def rook_forward(color_piece,row,col)
+    color=true #true for white, false for black
+    color_piece[0]=='w' ? color=true : color=false #true for white, false for black
+    curr_row=row-1
+    curr_col=col
+    if row!=0
+      until curr_row<0 # let the rook advance forward
+        if $board_pieces[curr_row][curr_col]==''
+          $valid_moves[curr_row][curr_col]=true
+        else
+          piece_capture(color,curr_row,curr_col)
+          break
+        end
+        curr_row-=1
+      end
+    end
+  end
+  
+  def piece_capture(color,curr_row,curr_col)
+    if color
+      if white_pieces(curr_row,curr_col)
+        $valid_moves[curr_row][curr_col]=true
+      end
+    else
+      if black_pieces(curr_row,curr_col)
+        $valid_moves[curr_row][curr_col]=true
+      end
+    end
+  end
+
+  def black_pieces(row,col)
+    pieces = ['bp','bb','br','bk','bq']
+    pieces.include?($board_pieces[row][col])
+  end
+
+  def white_pieces(row,col)
+    pieces=['wp','wb','wr','wk','wq']
+    pieces.include?($board_pieces[row][col])
+  end
+
+
+
+
+  def select_square
+    for row in 0..7
+      for col in 0..7
+        arr= $square_position[row][col]
+        if $square_chosen[row][col]==true
+          Square.new(x:arr[0],y:arr[1],color:'#DC3200',size:SQUARE_SIZE,opacity:0.6)
+          #valid_moves(row,col)
+          for valid_moves_row in 0..7
+            for valid_moves_col in 0..7
+              if $valid_moves[valid_moves_row][valid_moves_col]
+                arr=$square_position[valid_moves_row][valid_moves_col]
+                Square.new(x:arr[0],y:arr[1],color:'#DC3200',size:SQUARE_SIZE,opacity:0.6)
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+
+  def select_square_false
+    for row in 0..7
+      for col in 0..7
+        $square_chosen[row][col]=false
+      end
+    end
+  end
+
+  def valid_moves_false
+    for row in 0..7
+      for col in 0..7
+        $valid_moves[row][col]=false
+      end
+    end
+  end
+  def check_validity
+    for row in 0..7
+      for col in 0..7
+          return true if $valid_moves[row][col]
+      end
+    end
+    false
+  end
+
+  def current_piece?(row,col)
+    pieces =['wp','wb','wk','wr','wq','br','bp','bb','bk','bq']
+    return true if pieces.include?($board_pieces[row][col])
+    false
+  end
+
+  def square_chosen_twice
+    count=0
+    $square_chosen.each do |x|
+      x.each {|y| y==true ? count+=1 :count+=0}
+    end
+    count
+  end
+
+  def square_chosen_index
+    for a in 0..7
+      for b in 0..7
+        if $square_chosen[a][b]
+          @square_position_x=a
+          @square_position_y=b
+        end
+      end
+    end
+  end
+
+  def square_chosen_index_capturing(row,col)
+    for a in 0..7
+      for b in 0..7
+        if a!=row && b!=col
+          if $square_chosen[a][b]
+            @square_position_x=a
+            @square_position_y=b
+          end
+        end
+      end
+    end
+  end
+
+  def can_be_captured(row,col)
+    pieces = %w[wp wb wk wr wq br bp bb bk bq]
+    return true if pieces.include?($board_pieces[row][col])&& $valid_moves[row][col]
+    false
+  end
+
+  def move(x,y)
+
+    for row in 0..7
+      for col in 0..7
+        arr= $square_position[row][col]
+        current_square = Square.new(x:arr[0],y:arr[1],opacity:0,size:SQUARE_SIZE)
+        if current_square.contains?(x,y)
+          if current_piece?(row,col)
+            if square_chosen_twice>=1
+              if can_be_captured(row,col)
+                square_chosen_index
+                square_chosen_index_capturing(row,col)
+                $board_pieces[row][col]=$board_pieces[@square_position_x][@square_position_y]
+                $board_pieces[@square_position_x][@square_position_y]=''
+                valid_moves_false
+                select_square_false
+              else
+                valid_moves_false
+                select_square_false
+              end
+            end
+            $square_chosen[row][col]=true
+            valid_moves(row,col)
+          else
+            for a in 0..7
+              for b in 0..7
+                arr= $square_position[a][b]
+                if $valid_moves[a][b]==true
+                  if a==row&&b==col
+                    square_chosen_index
+                    $board_pieces[row][col]=$board_pieces[@square_position_x][@square_position_y]
+                    $board_pieces[@square_position_x][@square_position_y]=''
+                  end
+                end
+              end
+            end
+            valid_moves_false
+            select_square_false
+          end
+        end
+      end
+    end
+  end
+end
+
+game = Game.new
+
+update do
+  clear
+  game.draw
+  game.select_square
+end
+
+on :mouse_down do |event|
+  game.move(event.x,event.y)
+end
+
+show
